@@ -14,11 +14,13 @@ const TitanSync = {
 
         try {
             const data = {};
+            // Chaves do sistema que serão sincronizadas
             const keys = ['gtitan_tasks', 'gtitan_completed', 'gtitan_notes', 'gtitan_finances', 'gtitan_wallets', 'gtitan_health', 'gtitan_profile'];
-            keys.forEach(k => data[k] = JSON.parse(localStorage.getItem(k)) || []);
+            keys.forEach(k => data[k] = JSON.parse(localStorage.getItem(k)) || (k === 'gtitan_profile' ? {} : []));
 
             const url = `https://api.github.com/repos/${config.user}/${config.repo}/contents/db.json`;
             
+            // Busca o SHA do arquivo atual para permitir sobrescrever
             const fileRes = await fetch(url, {
                 headers: { 'Authorization': `token ${config.token}` }
             });
@@ -43,16 +45,16 @@ const TitanSync = {
             });
 
             if (response.ok) alert("✅ Dados salvos na nuvem com sucesso!");
-            else alert("❌ Erro ao subir. Verifique o nome do repositório e as permissões do token.");
+            else alert("❌ Erro ao subir. Verifique se o repositório existe e se o token tem permissão 'repo'.");
         } catch (err) {
             console.error(err);
-            alert("Erro de conexão.");
+            alert("Erro de conexão com o GitHub.");
         }
     },
 
     download: async function() {
         const config = this.getConfig();
-        if (!config) return alert("Configure o GitHub primeiro.");
+        if (!config || !config.token) return alert("Configure o GitHub primeiro.");
 
         try {
             const url = `https://api.github.com/repos/${config.user}/${config.repo}/contents/db.json`;
@@ -69,10 +71,10 @@ const TitanSync = {
                 localStorage.setItem(key, JSON.stringify(data[key]));
             });
 
-            alert("✅ Dados baixados com sucesso! O sistema será atualizado.");
+            alert("✅ Dados baixados com sucesso! O sistema será reiniciado.");
             location.reload();
         } catch (err) {
-            alert("❌ Erro ao baixar. Verifique se o arquivo db.json já existe no GitHub.");
+            alert("❌ Erro ao baixar. Verifique se o arquivo db.json já existe no seu GitHub.");
         }
     }
 };
