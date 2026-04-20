@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GVP.OS | Saúde & Performance Titan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .health-card { transition: all 0.3s ease; border: 1px solid transparent; }
+        .health-card:hover { transform: scale(1.02); border-color: #f43f5e; box-shadow: 0 15px 30px -10px rgba(244, 63, 94, 0.2); }
+        .radar-container { background: #ffffff; border-radius: 40px; padding: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-[1600px] mx-auto">
+        <header class="flex flex-col lg:flex-row justify-between items-center mb-10 bg-white p-8 rounded-[40px] shadow-sm border border-slate-200">
+            <div>
+                <a href="index.html" class="text-slate-400 hover:text-rose-600 font-bold text-xs uppercase tracking-widest mb-2 block">← Voltar ao Hub</a>
+                <h1 class="text-4xl font-[900] text-indigo-950 tracking-tighter leading-none">Vitalidade <span class="text-rose-500">& Performance</span></h1>
+            </div>
+            <div class="flex items-center gap-8 mt-4 lg:mt-0">
+                <div class="text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Treinos no Mês</p>
+                    <p id="stats-workouts" class="text-3xl font-[900] text-rose-600">0</p>
+                </div>
+                <div class="w-px h-12 bg-slate-100"></div>
+                <div class="text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dieta Limpa</p>
+                    <p id="stats-diet" class="text-3xl font-[900] text-emerald-500">0%</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+            <div class="xl:col-span-4">
+                <section class="bg-slate-900 p-8 rounded-[40px] shadow-2xl text-white sticky top-8">
+                    <h2 class="text-xs font-black text-rose-400 uppercase mb-8 tracking-[0.3em] text-center italic">Log Diário de Saúde</h2>
+                    <form id="healthForm" class="space-y-6">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2 tracking-widest">Data</label>
+                            <input type="date" id="healthDate" class="w-full p-4 bg-slate-800 border-none rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500" required>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2 tracking-widest">Atividade Realizada</label>
+                            <input type="text" id="healthExercise" placeholder="Ex: Musculação, Corrida, Yoga..." class="w-full p-4 bg-slate-800 border-none rounded-2xl font-bold text-white outline-none focus:ring-2 focus:ring-rose-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1 block mb-2 tracking-widest">Duração (minutos)</label>
+                            <input type="number" id="healthDuration" placeholder="Ex: 45" class="w-full p-4 bg-slate-800 border-none rounded-2xl font-black text-rose-400 outline-none focus:ring-2 focus:ring-rose-500">
+                        </div>
+                        <div class="flex items-center justify-between bg-slate-800 p-5 rounded-2xl">
+                            <div>
+                                <p class="text-xs font-black uppercase tracking-widest">Protocolo Alimentar</p>
+                                <p class="text-[9px] text-slate-400 uppercase">Seguiu a dieta hoje?</p>
+                            </div>
+                            <input type="checkbox" id="healthFood" class="w-8 h-8 accent-rose-500 cursor-pointer">
+                        </div>
+                        <button type="submit" class="w-full bg-rose-600 text-white py-5 rounded-3xl font-black shadow-xl hover:bg-rose-700 transition-all uppercase tracking-[0.2em] text-xs">Registrar Performance</button>
+                    </form>
+                </section>
+            </div>
+
+            <div class="xl:col-span-8 space-y-8">
+                <section class="radar-container flex flex-col items-center">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8">Análise de Equilíbrio Biométrico</h3>
+                    <div class="w-full max-w-md">
+                        <canvas id="healthChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="bg-white p-8 rounded-[40px] shadow-sm border border-slate-200">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase mb-6 tracking-widest">Histórico de Atividades</h3>
+                    <div id="healthList" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto custom-scroll pr-2">
+                        </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let health = JSON.parse(localStorage.getItem('gtitan_health')) || [];
+        let healthChart;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('healthDate').valueAsDate = new Date();
+            renderHealth();
+        });
+
+        document.getElementById('healthForm').onsubmit = function(e) {
+            e.preventDefault();
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('healthDate').value,
+                exercise: document.getElementById('healthExercise').value || "Descanso Ativo",
+                duration: parseInt(document.getElementById('healthDuration').value) || 0,
+                goodFood: document.getElementById('healthFood').checked
+            };
+            health.push(entry);
+            localStorage.setItem('gtitan_health', JSON.stringify(health));
+            this.reset();
+            document.getElementById('healthDate').valueAsDate = new Date();
+            renderHealth();
+        };
+
+        function deleteHealth(id) {
+            if(confirm('Remover este registro de saúde?')) {
+                health = health.filter(h => h.id !== id);
+                localStorage.setItem('gtitan_health', JSON.stringify(health));
+                renderHealth();
+            }
+        }
+
+        function renderHealth() {
+            const list = document.getElementById('healthList');
+            const sorted = [...health].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            list.innerHTML = sorted.map(h => `
+                <div class="health-card flex justify-between items-center bg-slate-50 p-5 rounded-3xl border border-slate-100 animate-fade">
+                    <div>
+                        <p class="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">${new Date(h.date).toLocaleDateString('pt-br')}</p>
+                        <p class="font-bold text-slate-800">${h.exercise}</p>
+                        <p class="text-xs text-slate-500">${h.duration} minutos</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase ${h.goodFood ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}">
+                            ${h.goodFood ? '🥗 Clean' : '🍔 Off'}
+                        </div>
+                        <button onclick="deleteHealth(${h.id})" class="text-slate-200 hover:text-rose-500 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </div>
+                </div>`).join('');
+
+            if(health.length === 0) list.innerHTML = `<p class="col-span-full text-center py-10 text-slate-300 italic uppercase text-xs tracking-widest">Sem logs de saúde</p>`;
+
+            // Atualizar Stats
+            const today = new Date();
+            const currentMonth = health.filter(h => new Date(h.date + 'T12:00:00').getMonth() === today.getMonth());
+            document.getElementById('stats-workouts').innerText = currentMonth.filter(h => h.duration > 0).length;
+            const dietScore = currentMonth.length > 0 ? Math.round((currentMonth.filter(h => h.goodFood).length / currentMonth.length) * 100) : 0;
+            document.getElementById('stats-diet').innerText = `${dietScore}%`;
+
+            updateRadarChart(currentMonth);
+        }
+
+        function updateRadarChart(monthlyData) {
+            const ctx = document.getElementById('healthChart').getContext('2d');
+
+            // Lógica de Scores (0 a 100)
+            const totalMin = monthlyData.reduce((acc, curr) => acc + curr.duration, 0);
+            const workoutFreq = (monthlyData.filter(h => h.duration > 0).length / 20) * 100; // Meta 20 treinos
+            const intensityScore = Math.min(100, (totalMin / 1000) * 100); // Meta 1000 min
+            const dietConsistency = monthlyData.length > 0 ? (monthlyData.filter(h => h.goodFood).length / monthlyData.length) * 100 : 0;
+
+            if(healthChart) healthChart.destroy();
+
+            healthChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Frequência', 'Volume (Min)', 'Consistência Dieta'],
+                    datasets: [{
+                        label: 'Performance Atual',
+                        data: [workoutFreq, intensityScore, dietConsistency],
+                        backgroundColor: 'rgba(244, 63, 94, 0.2)',
+                        borderColor: '#f43f5e',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#f43f5e',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#f43f5e'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            min: 0,
+                            max: 100,
+                            beginAtZero: true,
+                            ticks: { display: false },
+                            grid: { color: '#e2e8f0' },
+                            angleLines: { color: '#e2e8f0' },
+                            pointLabels: { font: { size: 10, weight: 'bold', family: 'Inter' }, color: '#64748b' }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

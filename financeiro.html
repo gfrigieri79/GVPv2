@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GVP.OS | Finanças Multicontas Titan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .card-titan { background: white; border-radius: 35px; border: 1px solid #e2e8f0; transition: all 0.3s ease; }
+        .wallet-pill { cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+        .wallet-active { border-color: #6366f1; background: #eef2ff !important; color: #4f46e5 !important; }
+        .chart-wrapper-main { position: relative; height: 320px; width: 100%; }
+        .chart-wrapper-donut { position: relative; height: 250px; width: 100%; }
+        .modal-blur { backdrop-filter: blur(12px); background-color: rgba(15, 23, 42, 0.8); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-[1600px] mx-auto">
+        <header class="flex flex-col lg:flex-row justify-between items-center mb-10 bg-white p-8 rounded-[40px] shadow-sm border border-slate-200">
+            <div>
+                <a href="index.html" class="text-slate-400 hover:text-indigo-600 font-bold text-xs uppercase tracking-widest mb-2 block">← Voltar ao Hub</a>
+                <h1 class="text-4xl font-[900] text-indigo-950 tracking-tighter leading-none">Gestão <span class="text-indigo-600">Multicontas</span></h1>
+            </div>
+            <div class="flex gap-3 mt-4 lg:mt-0">
+                <button onclick="openFinanceModal('receita')" class="px-6 py-4 bg-emerald-500 text-white rounded-[22px] font-black shadow-lg hover:bg-emerald-600 transition-all uppercase text-[10px] tracking-widest">+ Receita</button>
+                <button onclick="openFinanceModal('despesa')" class="px-6 py-4 bg-rose-500 text-white rounded-[22px] font-black shadow-lg hover:bg-rose-600 transition-all uppercase text-[10px] tracking-widest">+ Despesa</button>
+            </div>
+        </header>
+
+        <section class="card-titan p-8 shadow-sm mb-8">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 italic">Configuração de Meios de Pagamento</h3>
+            <div class="flex flex-wrap gap-4 items-center">
+                <input type="text" id="newWalletName" placeholder="Novo Banco ou Cartão..." class="p-4 bg-slate-50 border rounded-2xl font-bold outline-none text-xs flex-1 max-w-xs">
+                <button onclick="addWallet()" class="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[9px] tracking-widest hover:bg-indigo-600 transition-all">+ Adicionar</button>
+                <div id="wallets-manager-list" class="flex flex-wrap gap-2 ml-4">
+                    </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <div class="lg:col-span-2 card-titan p-8 shadow-sm">
+                <div class="flex flex-wrap gap-4 mb-6" id="pill-container">
+                    </div>
+                <h3 id="chart-title" class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 italic">Fluxo Mensal</h3>
+                <div class="chart-wrapper-main">
+                    <canvas id="chartGanhosGastos"></canvas>
+                </div>
+            </div>
+
+            <div class="card-titan p-8 shadow-sm flex flex-col justify-center bg-slate-900 text-white border-none relative overflow-hidden">
+                <div class="relative z-10">
+                    <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">Saldo em <span id="wallet-name-display">Geral</span></p>
+                    <h2 id="total-saldo" class="text-5xl font-[900] tracking-tighter">R$ 0,00</h2>
+                    <div class="mt-8 pt-8 border-t border-white/10 space-y-4">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-400 font-bold uppercase">Entradas</span>
+                            <span id="total-entradas" class="text-emerald-400 font-black">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-400 font-bold uppercase">Saídas</span>
+                            <span id="total-saidas" class="text-rose-400 font-black">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="card-titan p-8 shadow-sm">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Gastos por Categoria</h3>
+                <div class="chart-wrapper-donut">
+                    <canvas id="chartCategorias"></canvas>
+                </div>
+            </div>
+            <div class="card-titan p-8 shadow-sm">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Gastos por Meio de Pagamento</h3>
+                <div class="chart-wrapper-donut">
+                    <canvas id="chartMeios"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-titan p-8 shadow-sm">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 italic">Histórico de Transações</h3>
+            <div class="overflow-x-auto text-sm">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <th class="pb-4 px-4">Data</th>
+                            <th class="pb-4 px-4">Descrição</th>
+                            <th class="pb-4 px-4">Conta</th>
+                            <th class="pb-4 px-4">Categoria</th>
+                            <th class="pb-4 px-4 text-right">Valor</th>
+                            <th class="pb-4 px-4 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="finance-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="financeModal" class="fixed inset-0 hidden items-center justify-center modal-blur z-[100] p-4">
+        <div class="bg-white p-10 rounded-[50px] w-full max-w-lg shadow-2xl border-b-[15px] border-indigo-600 max-h-[95vh] overflow-y-auto custom-scroll">
+            <h3 id="modalTitle" class="text-2xl font-black mb-8 text-slate-900 uppercase">Novo Lançamento</h3>
+            <input type="hidden" id="finId"><input type="hidden" id="finType">
+
+            <div class="space-y-5">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Descrição</label>
+                    <input type="text" id="finDesc" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Valor Total (R$)</label>
+                        <input type="number" id="finValue" step="0.01" class="w-full p-4 bg-slate-50 border rounded-2xl font-black">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Data Início</label>
+                        <input type="date" id="finDate" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Repetição</label>
+                        <select id="finRepeat" class="w-full p-4 bg-indigo-50 border rounded-2xl font-black outline-none" onchange="handleRepeatChange()">
+                            <option value="single">Única</option>
+                            <option value="fixed">Fixa Mensal</option>
+                            <option value="installment">Parcelada</option>
+                        </select>
+                    </div>
+                    <div id="installmentsBox" class="hidden">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Parcelas</label>
+                        <input type="number" id="finInstallments" value="1" min="1" class="w-full p-4 bg-slate-50 border rounded-2xl font-black">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Conta / Cartão</label>
+                    <select id="finWallet" class="w-full p-4 bg-slate-50 border rounded-2xl font-black outline-none">
+                        </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2">Categoria</label>
+                    <select id="finCat" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+                        <option value="Essencial">Essencial</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Investimento">Investimento</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Trabalho">Trabalho</option>
+                        <option value="Educação">Educação</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-4 mt-8">
+                <button onclick="closeFinanceModal()" class="flex-1 py-4 font-black text-slate-400 uppercase text-[10px]">Cancelar</button>
+                <button onclick="saveFinance()" class="flex-[2] py-4 bg-indigo-600 text-white rounded-[20px] font-black uppercase text-[10px] tracking-widest">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let finances = JSON.parse(localStorage.getItem('gtitan_finances')) || [];
+        let wallets = JSON.parse(localStorage.getItem('gtitan_wallets')) || ['Conta Corrente', 'Cartão de Crédito', 'Vale Alimentação'];
+        let currentWalletFilter = 'Todas';
+        let chartGanhos, chartCategorias, chartMeios;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            renderWallets();
+            renderFinance();
+        });
+
+        function initCharts() {
+            const ctx1 = document.getElementById('chartGanhosGastos').getContext('2d');
+            chartGanhos = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'],
+                    datasets: [
+                        { label: 'Entradas', data: [], backgroundColor: '#10b981', borderRadius: 6 },
+                        { label: 'Saídas', data: [], backgroundColor: '#f43f5e', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('chartCategorias').getContext('2d');
+            chartCategorias = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Essencial', 'Lazer', 'Investimento', 'Alimentação', 'Trabalho', 'Educação', 'Outros'],
+                    datasets: [{ data: [], backgroundColor: ['#6366f1', '#f59e0b', '#ec4899', '#10b981', '#0ea5e9', '#8b5cf6', '#94a3b8'], borderWeight: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } } }
+            });
+
+            const ctx3 = document.getElementById('chartMeios').getContext('2d');
+            chartMeios = new Chart(ctx3, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{ data: [], backgroundColor: ['#4f46e5', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#0ea5e9'], borderWeight: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9, weight: 'bold' } } } } }
+            });
+        }
+
+        // --- GESTÃO DE CARTEIRAS ---
+        function addWallet() {
+            const name = document.getElementById('newWalletName').value.trim();
+            if(name && !wallets.includes(name)) {
+                wallets.push(name);
+                localStorage.setItem('gtitan_wallets', JSON.stringify(wallets));
+                document.getElementById('newWalletName').value = '';
+                renderWallets();
+                renderFinance(); // Atualiza gráficos
+            }
+        }
+
+        function removeWallet(name) {
+            if(confirm(`Remover conta "${name}"? Os lançamentos existentes não serão apagados.`)) {
+                wallets = wallets.filter(w => w !== name);
+                localStorage.setItem('gtitan_wallets', JSON.stringify(wallets));
+                renderWallets();
+            }
+        }
+
+        function renderWallets() {
+            // Gerencia botões de exclusão
+            const manager = document.getElementById('wallets-manager-list');
+            manager.innerHTML = wallets.map(w => `
+                <div class="flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-xl text-[9px] font-black uppercase text-slate-600">
+                    ${w} <button onclick="removeWallet('${w}')" class="text-rose-500 hover:scale-125 transition-all">✕</button>
+                </div>
+            `).join('');
+
+            // Gerencia Filtros (Pills)
+            const pillContainer = document.getElementById('pill-container');
+            pillContainer.innerHTML = `<div onclick="setWalletFilter('Todas')" id="pill-Todas" class="wallet-pill ${currentWalletFilter === 'Todas' ? 'wallet-active' : ''} px-4 py-2 rounded-full bg-slate-100 font-black text-[9px] uppercase tracking-widest">🌍 Todas</div>` +
+            wallets.map(w => `
+                <div onclick="setWalletFilter('${w}')" id="pill-${w.replace(/\s+/g, '')}" class="wallet-pill ${currentWalletFilter === w ? 'wallet-active' : ''} px-4 py-2 rounded-full bg-slate-100 font-black text-[9px] uppercase tracking-widest">${w}</div>
+            `).join('');
+
+            // Atualiza select no modal
+            document.getElementById('finWallet').innerHTML = wallets.map(w => `<option value="${w}">${w}</option>`).join('');
+        }
+
+        function setWalletFilter(wallet) {
+            currentWalletFilter = wallet;
+            document.getElementById('wallet-name-display').innerText = wallet === 'Todas' ? 'Geral' : wallet;
+            renderWallets(); // Atualiza visual das pills
+            renderFinance();
+        }
+
+        // --- LÓGICA DE LANÇAMENTOS ---
+        function handleRepeatChange() {
+            const repeat = document.getElementById('finRepeat').value;
+            document.getElementById('installmentsBox').classList.toggle('hidden', repeat !== 'installment');
+        }
+
+        function openFinanceModal(type, id = null) {
+            document.getElementById('finId').value = id || "";
+            document.getElementById('finType').value = type;
+            document.getElementById('finDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('finRepeat').value = "single";
+            handleRepeatChange();
+
+            if(id) {
+                const f = finances.find(x => x.id == id);
+                document.getElementById('finDesc').value = f.desc;
+                document.getElementById('finValue').value = f.value;
+                document.getElementById('finDate').value = f.date;
+                document.getElementById('finWallet').value = f.wallet;
+                document.getElementById('finCat').value = f.cat;
+            } else {
+                document.getElementById('finDesc').value = "";
+                document.getElementById('finValue').value = "";
+            }
+            document.getElementById('financeModal').classList.replace('hidden', 'flex');
+        }
+
+        function closeFinanceModal() { document.getElementById('financeModal').classList.replace('flex', 'hidden'); }
+
+        function saveFinance() {
+            const id = document.getElementById('finId').value;
+            const repeatType = document.getElementById('finRepeat').value;
+            const installments = parseInt(document.getElementById('finInstallments').value) || 1;
+            const baseValue = parseFloat(document.getElementById('finValue').value);
+            const baseDate = new Date(document.getElementById('finDate').value + 'T12:00:00');
+
+            const baseData = {
+                type: document.getElementById('finType').value,
+                desc: document.getElementById('finDesc').value,
+                wallet: document.getElementById('finWallet').value,
+                cat: document.getElementById('finCat').value
+            };
+
+            if(id) {
+                // Edição Simples
+                const idx = finances.findIndex(f => f.id == id);
+                finances[idx] = { ...baseData, id: parseInt(id), value: baseValue, date: document.getElementById('finDate').value };
+            } else {
+                // Novo Lançamento com Inteligência de Parcelas
+                if(repeatType === 'installment' && baseData.type === 'despesa') {
+                    const valorParcela = baseValue / installments;
+                    for(let i = 0; i < installments; i++) {
+                        let pDate = new Date(baseDate);
+                        pDate.setMonth(pDate.getMonth() + i);
+                        finances.unshift({
+                            ...baseData,
+                            id: Date.now() + i,
+                            value: valorParcela,
+                            desc: `${baseData.desc} [${i+1}/${installments}]`,
+                            date: pDate.toISOString().split('T')[0]
+                        });
+                    }
+                } else if(repeatType === 'fixed') {
+                    // Gera os próximos 12 meses para fixo
+                    for(let i = 0; i < 12; i++) {
+                        let pDate = new Date(baseDate);
+                        pDate.setMonth(pDate.getMonth() + i);
+                        finances.unshift({
+                            ...baseData,
+                            id: Date.now() + i,
+                            value: baseValue,
+                            desc: `${baseData.desc} (Mensal)`,
+                            date: pDate.toISOString().split('T')[0]
+                        });
+                    }
+                } else {
+                    finances.unshift({ ...baseData, id: Date.now(), value: baseValue, date: document.getElementById('finDate').value });
+                }
+            }
+
+            localStorage.setItem('gtitan_finances', JSON.stringify(finances));
+            renderFinance(); closeFinanceModal();
+        }
+
+        function deleteFinance(id) {
+            if(confirm('Excluir transação?')) {
+                finances = finances.filter(f => f.id != id);
+                localStorage.setItem('gtitan_finances', JSON.stringify(finances));
+                renderFinance();
+            }
+        }
+
+        function renderFinance() {
+            const list = document.getElementById('finance-list');
+            const filtered = finances.filter(f => currentWalletFilter === 'Todas' || f.wallet === currentWalletFilter);
+
+            let totalE = 0, totalOut = 0;
+            let mE = new Array(12).fill(0), mS = new Array(12).fill(0);
+            let catStats = { Essencial:0, Lazer:0, Investimento:0, Alimentação:0, Trabalho:0, Educação:0, Outros:0 };
+            let walletStats = {};
+            wallets.forEach(w => walletStats[w] = 0);
+
+            list.innerHTML = filtered.sort((a,b) => new Date(b.date) - new Date(a.date)).map(f => {
+                const isR = f.type === 'receita';
+                const v = parseFloat(f.value);
+                const d = new Date(f.date + 'T12:00:00');
+                const mes = d.getMonth();
+
+                // Só soma para o gráfico e totais se for do ano corrente ou visualização geral
+                if(isR) { totalE += v; mE[mes] += v; }
+                else {
+                    totalOut += v; mS[mes] += v;
+                    catStats[f.cat] += v;
+                    if(walletStats[f.wallet] !== undefined) walletStats[f.wallet] += v;
+                }
+
+                return `
+                    <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                        <td class="py-4 px-4 font-bold text-slate-400 text-[10px]">${d.toLocaleDateString('pt-br')}</td>
+                        <td class="py-4 px-4 font-black text-slate-800">${f.desc}</td>
+                        <td class="py-4 px-4 font-bold text-indigo-500 text-[10px] uppercase">${f.wallet}</td>
+                        <td class="py-4 px-4"><span class="px-3 py-1 bg-slate-100 rounded-full text-[9px] font-black uppercase text-slate-500">${f.cat}</span></td>
+                        <td class="py-4 px-4 text-right font-black ${isR ? 'text-emerald-500' : 'text-rose-500'}">${isR?'+':'-'} R$ ${v.toLocaleString('pt-br',{minFractionDigits:2})}</td>
+                        <td class="py-4 px-4 text-center">
+                            <button onclick="openFinanceModal('${f.type}', ${f.id})" class="text-slate-300 hover:text-indigo-600 mr-2 text-xs">✎</button>
+                            <button onclick="deleteFinance(${f.id})" class="text-slate-300 hover:text-rose-600 text-xs">✕</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+
+            document.getElementById('total-saldo').innerText = `R$ ${(totalE - totalOut).toLocaleString('pt-br',{minFractionDigits:2})}`;
+            document.getElementById('total-entradas').innerText = `R$ ${totalE.toLocaleString('pt-br',{minFractionDigits:2})}`;
+            document.getElementById('total-saidas').innerText = `R$ ${totalOut.toLocaleString('pt-br',{minFractionDigits:2})}`;
+
+            // Update Charts
+            chartGanhos.data.datasets[0].data = mE;
+            chartGanhos.data.datasets[1].data = mS;
+            chartGanhos.update();
+
+            chartCategorias.data.datasets[0].data = Object.values(catStats);
+            chartCategorias.update();
+
+            chartMeios.data.labels = Object.keys(walletStats);
+            chartMeios.data.datasets[0].data = Object.values(walletStats);
+            chartMeios.update();
+        }
+    </script>
+</body>
+</html>

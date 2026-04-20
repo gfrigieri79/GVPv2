@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GVP.OS | Arquivo de Concluídas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .done-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            border: 1px solid #e2e8f0;
+        }
+        .done-card:hover {
+            transform: translateY(-4px);
+            border-color: #10b981;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-[1400px] mx-auto">
+        <header class="flex flex-col lg:flex-row justify-between items-center mb-10 bg-white p-8 rounded-[40px] shadow-sm border border-slate-200">
+            <div>
+                <a href="index.html" class="text-slate-400 hover:text-emerald-600 font-bold text-xs uppercase tracking-widest mb-2 block">← Voltar ao Hub</a>
+                <h1 class="text-4xl font-[900] text-indigo-950 tracking-tighter leading-none text-center lg:text-left">Estoque de <span class="text-emerald-500">Concluídas</span></h1>
+            </div>
+            <div class="mt-4 lg:mt-0 px-6 py-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <p id="counter" class="text-emerald-600 font-black text-sm uppercase tracking-widest">0 Itens Arquivados</p>
+            </div>
+        </header>
+
+        <div class="mb-8 flex flex-col md:flex-row gap-4">
+            <input type="text" id="searchInput" onkeyup="filterTasks()" placeholder="Buscar no histórico..." class="flex-1 p-5 rounded-[25px] border border-slate-200 outline-none focus:ring-4 focus:ring-emerald-500/10 font-medium">
+            <button onclick="clearHistory()" class="px-8 py-5 bg-rose-50 text-rose-500 rounded-[25px] font-black text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all">Limpar Histórico</button>
+        </div>
+
+        <div id="completed-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+
+        <div id="empty-state" class="hidden flex flex-col items-center justify-center py-32 opacity-30 text-slate-500">
+            <div class="text-7xl mb-6">📂</div>
+            <p class="font-black uppercase tracking-[0.3em] text-xs">Nenhum item no estoque</p>
+        </div>
+    </div>
+
+    <script>
+        // Sincronização com o banco central do GVP.OS
+        function getCompleted() {
+            return JSON.parse(localStorage.getItem('gtitan_completed')) || [];
+        }
+
+        function getActiveTasks() {
+            return JSON.parse(localStorage.getItem('gtitan_tasks')) || [];
+        }
+
+        function renderCompleted(filter = '') {
+            const completed = getCompleted();
+            const grid = document.getElementById('completed-grid');
+            const empty = document.getElementById('empty-state');
+            const counter = document.getElementById('counter');
+
+            const filtered = completed.filter(t => t.title.toLowerCase().includes(filter.toLowerCase()));
+
+            counter.innerText = `${filtered.length} Itens Arquivados`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            grid.innerHTML = filtered.map(t => `
+                <div class="done-card p-6 rounded-[35px] flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-emerald-100 text-emerald-600 text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter">Concluída</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">
+                                ${t.completedAt ? new Date(t.completedAt).toLocaleDateString('pt-br') : new Date(t.start).toLocaleDateString('pt-br')}
+                            </span>
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-2 leading-tight">${t.title}</h3>
+                        <p class="text-xs text-slate-400 font-medium mb-6">Duração registrada: ${t.duration || 0} min</p>
+                    </div>
+
+                    <div class="flex gap-3 pt-6 border-t border-slate-50">
+                        <button onclick="restoreTask(${t.id})" class="flex-1 bg-slate-900 text-white py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all">Restaurar para Timeline</button>
+                        <button onclick="deleteForever(${t.id})" class="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:text-rose-500 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterTasks() {
+            const query = document.getElementById('searchInput').value;
+            renderCompleted(query);
+        }
+
+        function restoreTask(id) {
+            let completed = getCompleted();
+            let activeTasks = getActiveTasks();
+
+            const index = completed.findIndex(t => t.id == id);
+            if (index !== -1) {
+                const task = completed.splice(index, 1)[0];
+
+                // Reseta o status para voltar à vida ativa
+                task.progress = 90;
+                delete task.completedAt; // Remove a marca de conclusão para não bugar a lógica
+
+                activeTasks.push(task);
+
+                localStorage.setItem('gtitan_completed', JSON.stringify(completed));
+                localStorage.setItem('gtitan_tasks', JSON.stringify(activeTasks));
+
+                renderCompleted();
+                alert(`"${task.title}" foi restaurada para a sua Timeline Master.`);
+            }
+        }
+
+        function deleteForever(id) {
+            if(confirm('Esta ação é irreversível. Excluir permanentemente do cofre?')) {
+                let completed = getCompleted();
+                completed = completed.filter(t => t.id != id);
+                localStorage.setItem('gtitan_completed', JSON.stringify(completed));
+                renderCompleted();
+            }
+        }
+
+        function clearHistory() {
+            if(confirm('CUIDADO: Isso apagará TODO o cofre de tarefas concluídas. Continuar?')) {
+                localStorage.setItem('gtitan_completed', JSON.stringify([]));
+                renderCompleted();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => renderCompleted());
+    </script>
+</body>
+</html>
